@@ -14,7 +14,7 @@ app.post('/api/evaluate', async (req, res) => {
         const { prompt, studentAnswer } = req.body;
         
         // 1. Use the fastest model
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         // 2. Lower safety filters so it doesn't block IELTS topics like "crime"
         const safetySettings = [
