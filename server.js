@@ -12,8 +12,6 @@ app.post('/api/evaluate', async (req, res) => {
     try {
         const { prompt, studentAnswer } = req.body;
         
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
-
         const systemInstruction = `
         You are a strict but encouraging IELTS examiner grading a Task 2 essay introduction. 
         Original Essay Prompt: "${prompt}"
@@ -32,9 +30,34 @@ app.post('/api/evaluate', async (req, res) => {
         }
         `;
 
-        const result = await model.generateContent(systemInstruction);
-        const response = await result.response;
-        let text = response.text().trim();
+        // 🛡️ TRIPLE-FALLBACK CHAIN
+        const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"];
+        let success = false;
+        let text = "";
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`Attempting evaluation with model: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                const result = await model.generateContent(systemInstruction);
+                const response = await result.response;
+                text = response.text().trim();
+                
+                if (text && text.trim() !== "") {
+                    success = true;
+                    console.log(`Success using model: ${modelName}`);
+                    break; 
+                }
+            } catch (error) {
+                console.warn(`Model ${modelName} encountered an error: ${error.message}. Trying backup...`);
+                lastError = error;
+            }
+        }
+
+        if (!success) {
+            throw new Error(`All fallback models failed. Last error: ${lastError ? lastError.message : 'Unknown'}`);
+        }
 
         // Clean up markdown code block wrappers if the AI accidentally generated them
         text = text.replace(/```json/gi, '');
