@@ -11,7 +11,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.post('/api/evaluate', async (req, res) => {
     try {
         const { prompt, studentAnswer } = req.body;
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        // Pointing to Google's active, stable model
+        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
         const systemInstruction = `
         You are a strict but encouraging IELTS examiner grading a Task 2 essay introduction. 
@@ -35,22 +37,18 @@ app.post('/api/evaluate', async (req, res) => {
         </div>
         `;
 
-        // Generate Content (Simplest method)
         const result = await model.generateContent(systemInstruction);
         const response = await result.response;
         const text = response.text();
 
-        // If the AI gives an empty response, send the raw internal data to the screen!
         if (!text || text.trim() === "") {
-            return res.json({ feedback: `<b>AI returned empty. RAW SYSTEM DATA:</b> <br><br> <span style="font-family: monospace; font-size: 12px;">${JSON.stringify(response)}</span>` });
+            return res.json({ feedback: `The AI processed your answer successfully, but returned an empty response.` });
         }
         
-        // Success
         res.json({ feedback: text });
 
     } catch (error) {
         console.error("Backend Error:", error);
-        // We are passing the error as a successful text string so it prints on your LearnWorlds screen!
         res.status(200).json({ feedback: `<span style="color: red; font-weight: bold;">BACKEND CRASH REPORT: ${error.message}</span>` });
     }
 });
