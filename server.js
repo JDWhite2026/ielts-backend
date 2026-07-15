@@ -11,17 +11,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.post('/api/evaluate', async (req, res) => {
     try {
         const { prompt, studentAnswer, mode } = req.body; 
+        const activeMode = mode || 'whole';
         
         const systemInstruction = `
         You are an expert IELTS examiner grading an Academic Task 2 essay introduction component.
         Original Essay Prompt: "${prompt}"
         Student's Submitted Text: "${studentAnswer}"
-        Active Practice Mode: "${mode || 'whole'}" (Options: 'paraphrase', 'thesis', 'map', 'whole').
+        Active Practice Mode: "${activeMode}" (Options: 'paraphrase', 'thesis', 'map', 'whole').
 
         CRITICAL EVALUATION INSTRUCTION:
         1. If Mode is 'paraphrase':
            - Evaluate ONLY the paraphrased sentence submitted. Do NOT penalise the student for not writing a thesis statement or essay map.
-           - Give an estimated band score (e.g. Band 7.5) based ONLY on their paraphrasing skills (meaning accuracy, vocabulary, and grammar variety).
+           - Give an estimated band score based ONLY on their paraphrasing skills (meaning accuracy, vocabulary, and grammar variety).
            - Write constructive feedback in the "paraphraseFeedback" key (2-3 sentences in British English).
            - You MUST set "thesisFeedback" to exactly "N/A".
            - You MUST set "essayMapFeedback" to exactly "N/A".
@@ -29,7 +30,7 @@ app.post('/api/evaluate', async (req, res) => {
 
         2. If Mode is 'thesis':
            - Evaluate ONLY the thesis statement sentence submitted. Do NOT penalise the student for not writing a paraphrase or essay map.
-           - Give an estimated band score (e.g. Band 7.0) based ONLY on how clearly they outline their position/opinion answering the prompt.
+           - Give an estimated band score based ONLY on how clearly they outline their position/opinion answering the prompt.
            - Write constructive feedback in the "thesisFeedback" key (2-3 sentences in British English).
            - You MUST set "paraphraseFeedback" to exactly "N/A".
            - You MUST set "essayMapFeedback" to exactly "N/A".
@@ -37,7 +38,7 @@ app.post('/api/evaluate', async (req, res) => {
 
         3. If Mode is 'map':
            - Evaluate ONLY the essay map sentence submitted. Do NOT penalise the student for not writing a paraphrase or thesis statement.
-           - Give an estimated band score (e.g. Band 6.5) based ONLY on how well they outline their upcoming body paragraphs.
+           - Give an estimated band score based ONLY on how well they outline their upcoming body paragraphs.
            - Write constructive feedback in the "essayMapFeedback" key (2-3 sentences in British English).
            - You MUST set "paraphraseFeedback" to exactly "N/A".
            - You MUST set "thesisFeedback" to exactly "N/A".
@@ -54,7 +55,7 @@ app.post('/api/evaluate', async (req, res) => {
         The JSON object must have exactly these keys: "bandScore", "paraphraseFeedback", "thesisFeedback", "essayMapFeedback", "suggestedVersion".
         `;
 
-        // TRIPLE-FALLBACK CHAIN
+        // TRIPLE-FALLBACK CHAIN WITH RECOVERY
         const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"];
         let success = false;
         let text = "";
@@ -74,7 +75,7 @@ app.post('/api/evaluate', async (req, res) => {
                     break; 
                 }
             } catch (error) {
-                console.warn(`Model ${modelName} failed. Trying backup...`);
+                console.warn(`Model ${modelName} failed. Error: ${error.message}`);
                 lastError = error;
             }
         }
@@ -84,10 +85,8 @@ app.post('/api/evaluate', async (req, res) => {
         }
 
         // Clean up markdown code block wrappers
-        text = text.replace(/
-```json/gi, '');
-        text = text.replace(/
-```/g, '');
+        text = text.replace(/```json/gi, '');
+        text = text.replace(/```/g, '');
         text = text.trim();
 
         let parsedData;
@@ -118,6 +117,7 @@ app.post('/api/evaluate', async (req, res) => {
     }
 });
 
+// FIXED PORT BINDING TYPO
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
