@@ -12,38 +12,45 @@ app.post('/api/evaluate', async (req, res) => {
     try {
         const { prompt, studentAnswer } = req.body;
         
-        // Pointing to Google's active, stable model
         const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
+        // We use highly protected HTML paragraphs instead of bullet lists, forcing dark colors with !important
         const systemInstruction = `
         You are a strict but encouraging IELTS examiner grading a Task 2 essay introduction. 
         Original Essay Prompt: "${prompt}"
         Student's Paraphrased Introduction: "${studentAnswer}"
         
-        Provide your feedback in HTML format so it looks beautiful on a webpage. Use bolding and bullet points. 
-        Structure your response exactly like this:
+        Provide your feedback in HTML format. You MUST use the exact template below, including all style attributes. Keep the !important declarations.
         
-        <h4 style="color: #1e3a8a; margin-top: 0; margin-bottom: 5px;">Estimated Band Score for Paraphrasing: [Insert Score]</h4>
-        
-        <ul style="margin-top: 10px; margin-bottom: 15px; padding-left: 20px;">
-            <li style="margin-bottom: 8px;"><b>Meaning Accuracy:</b> [Feedback here]</li>
-            <li style="margin-bottom: 8px;"><b>Lexical Resource:</b> [Feedback here]</li>
-            <li style="margin-bottom: 8px;"><b>Grammatical Range:</b> [Feedback here]</li>
-        </ul>
-        
-        <div style="background-color: #e8f4f8; padding: 15px; border-left: 4px solid #3b82f6; margin-top: 15px; border-radius: 0 8px 8px 0; color: #1e3a8a;">
-            <b>Suggested Improved Version:</b> <br>
-            [Provide one perfect Band 9 example here]
+        <div style="color: #1f2937 !important; font-family: sans-serif; line-height: 1.6; text-align: left;">
+            <p style="color: #1e3a8a !important; font-size: 1.2rem; font-weight: bold; margin-top: 0; margin-bottom: 15px; display: block !important;">
+                Estimated Band Score for Paraphrasing: [Insert Score]
+            </p>
+            
+            <p style="margin: 8px 0 !important; color: #1f2937 !important; display: block !important;">
+                <b style="color: #111827 !important;">• Meaning Accuracy:</b> [Feedback here]
+            </p>
+            <p style="margin: 8px 0 !important; color: #1f2937 !important; display: block !important;">
+                <b style="color: #111827 !important;">• Lexical Resource:</b> [Feedback here]
+            </p>
+            <p style="margin: 8px 0 !important; color: #1f2937 !important; display: block !important;">
+                <b style="color: #111827 !important;">• Grammatical Range:</b> [Feedback here]
+            </p>
+            
+            <div style="background-color: #e8f4f8 !important; padding: 15px !important; border-left: 4px solid #3b82f6 !important; margin-top: 20px !important; border-radius: 4px !important; color: #1e3a8a !important; display: block !important;">
+                <b style="color: #1e3a8a !important;">Suggested Improved Version:</b><br>
+                <span style="color: #1e3a8a !important; display: inline-block; margin-top: 5px;">[Provide one perfect Band 9 example here]</span>
+            </div>
         </div>
 
-        CRITICAL REQUIREMENT: Do NOT wrap the HTML output in markdown code blocks like \`\`\`html or \`\`\`. Output ONLY the raw, naked HTML.
+        CRITICAL REQUIREMENT: Do NOT wrap the HTML output in markdown code blocks like \`\`\`html or \`\`\`. Output ONLY the raw HTML.
         `;
 
         const result = await model.generateContent(systemInstruction);
         const response = await result.response;
         let text = response.text();
 
-        // ✂️ SAFETY SCISSORS: Strip any markdown backticks if the AI ignores instructions
+        // Strip any accidental markdown wrappers
         text = text.replace(/```html/gi, '');
         text = text.replace(/```/g, '');
         text = text.trim();
