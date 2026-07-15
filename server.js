@@ -23,23 +23,30 @@ app.post('/api/evaluate', async (req, res) => {
         Provide your feedback in HTML format so it looks beautiful on a webpage. Use bolding and bullet points. 
         Structure your response exactly like this:
         
-        <h4 style="color: #1e3a8a; margin-bottom: 5px;">Estimated Band Score for Paraphrasing: [Insert Score]</h4>
+        <h4 style="color: #1e3a8a; margin-top: 0; margin-bottom: 5px;">Estimated Band Score for Paraphrasing: [Insert Score]</h4>
         
-        <ul style="margin-top: 10px;">
+        <ul style="margin-top: 10px; margin-bottom: 15px; padding-left: 20px;">
             <li style="margin-bottom: 8px;"><b>Meaning Accuracy:</b> [Feedback here]</li>
             <li style="margin-bottom: 8px;"><b>Lexical Resource:</b> [Feedback here]</li>
             <li style="margin-bottom: 8px;"><b>Grammatical Range:</b> [Feedback here]</li>
         </ul>
         
-        <div style="background-color: #e8f4f8; padding: 10px; border-left: 4px solid #3b82f6; margin-top: 15px;">
+        <div style="background-color: #e8f4f8; padding: 15px; border-left: 4px solid #3b82f6; margin-top: 15px; border-radius: 0 8px 8px 0; color: #1e3a8a;">
             <b>Suggested Improved Version:</b> <br>
             [Provide one perfect Band 9 example here]
         </div>
+
+        CRITICAL REQUIREMENT: Do NOT wrap the HTML output in markdown code blocks like \`\`\`html or \`\`\`. Output ONLY the raw, naked HTML.
         `;
 
         const result = await model.generateContent(systemInstruction);
         const response = await result.response;
-        const text = response.text();
+        let text = response.text();
+
+        // ✂️ SAFETY SCISSORS: Strip any markdown backticks if the AI ignores instructions
+        text = text.replace(/```html/gi, '');
+        text = text.replace(/```/g, '');
+        text = text.trim();
 
         if (!text || text.trim() === "") {
             return res.json({ feedback: `The AI processed your answer successfully, but returned an empty response.` });
