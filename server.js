@@ -50,6 +50,14 @@ app.post('/api/evaluate', async (req, res) => {
            - Give a total estimated band score for the entire cohesive introduction.
            - The "suggestedVersion" must combine all three parts into a cohesive Band 7.0 introduction.
 
+        5. If Mode is 'plan':
+           - The student has submitted an outline/plan for their essay.
+           - Assess if their position directly answers the question prompt.
+           - Check if their two body paragraph points are logical, relevant, and supported by concrete examples.
+           - Give an estimated band score based strictly on structural logic and relevance.
+           - Output your structural critique inside the "paraphraseFeedback" key, your idea development critique inside "thesisFeedback", and leave "essayMapFeedback" as "N/A".
+           - The "suggestedVersion" should showcase a highly organized, bulleted model outline for that specific prompt.
+
         Strict JSON Output Rule:
         You must output your response strictly as a JSON object. Do not write any markdown code blocks, backticks, or extra text. Output ONLY the raw JSON.
         The JSON object must have exactly these keys: "bandScore", "paraphraseFeedback", "thesisFeedback", "essayMapFeedback", "suggestedVersion".
