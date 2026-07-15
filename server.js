@@ -14,61 +14,58 @@ app.post('/api/evaluate', async (req, res) => {
         
         const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
-        // We completely avoid <p> tags and force visible, explicit colors inside <span> wrappers
         const systemInstruction = `
         You are a strict but encouraging IELTS examiner grading a Task 2 essay introduction. 
         Original Essay Prompt: "${prompt}"
         Student's Paraphrased Introduction: "${studentAnswer}"
         
-        Provide your feedback in HTML format. You MUST use the exact template below, including all style attributes. Keep the !important declarations on every single element.
-        
-        <div style="color: #000000 !important; font-family: sans-serif !important; line-height: 1.6 !important; text-align: left !important; display: block !important;">
-            <div style="color: #1e3a8a !important; font-size: 1.25rem !important; font-weight: bold !important; margin-top: 0 !important; margin-bottom: 20px !important; display: block !important;">
-                Estimated Band Score for Paraphrasing: [Insert Score]
-            </div>
-            
-            <div style="margin-top: 10px !important; margin-bottom: 12px !important; color: #000000 !important; font-size: 15px !important; display: block !important; line-height: 1.6 !important;">
-                <span style="color: #1e3a8a !important; font-weight: bold !important; display: inline !important;">• Meaning Accuracy:</span> 
-                <span style="color: #1f2937 !important; display: inline !important;">[Write 2-3 detailed sentences of feedback here]</span>
-            </div>
-            
-            <div style="margin-bottom: 12px !important; color: #000000 !important; font-size: 15px !important; display: block !important; line-height: 1.6 !important;">
-                <span style="color: #1e3a8a !important; font-weight: bold !important; display: inline !important;">• Lexical Resource:</span> 
-                <span style="color: #1f2937 !important; display: inline !important;">[Write 2-3 detailed sentences of feedback here]</span>
-            </div>
-            
-            <div style="margin-bottom: 20px !important; color: #000000 !important; font-size: 15px !important; display: block !important; line-height: 1.6 !important;">
-                <span style="color: #1e3a8a !important; font-weight: bold !important; display: inline !important;">• Grammatical Range:</span> 
-                <span style="color: #1f2937 !important; display: inline !important;">[Write 2-3 detailed sentences of feedback here]</span>
-            </div>
-            
-            <div style="background-color: #e8f4f8 !important; padding: 15px !important; border-left: 4px solid #3b82f6 !important; margin-top: 20px !important; border-radius: 4px !important; color: #1e3a8a !important; display: block !important; font-size: 15px !important;">
-                <span style="color: #1e3a8a !important; font-weight: bold !important; display: block !important; margin-bottom: 5px !important;">Suggested Improved Version:</span>
-                <span style="color: #1e3a8a !important; display: block !important; font-style: italic !important;">[Provide one perfect Band 9 example here]</span>
-            </div>
-        </div>
+        Evaluate the student's response. You MUST output your response strictly as a JSON object. 
+        Do not write any markdown code blocks, backticks, or extra text. Output ONLY the raw JSON.
 
-        CRITICAL REQUIREMENT: Do NOT wrap the HTML output in markdown code blocks like \`\`\`html or \`\`\`. Output ONLY the raw HTML.
+        The JSON object must have exactly these keys:
+        {
+          "bandScore": "[Insert Estimated Band Score, e.g., Band 6.5]",
+          "meaningAccuracy": "[Your detailed 2-3 sentence evaluation of meaning accuracy]",
+          "lexicalResource": "[Your detailed 2-3 sentence evaluation of vocabulary and synonyms]",
+          "grammaticalRange": "[Your detailed 2-3 sentence evaluation of grammar]",
+          "suggestedVersion": "[Provide a realistic, high-quality Band 7.0 paraphrased version here. It should be natural, clear, grammatically correct, and use solid academic vocabulary that is highly achievable for an upper-intermediate student. Avoid overly complex, obscure structures.]"
+        }
         `;
 
         const result = await model.generateContent(systemInstruction);
         const response = await result.response;
-        let text = response.text();
+        let text = response.text().trim();
 
-        // Safety scissors: Strip any accidental markdown blocks
-        text = text.replace(/```html/gi, '');
+        // Clean up markdown code block wrappers if the AI accidentally generated them
+        text = text.replace(/```json/gi, '');
         text = text.replace(/```/g, '');
         text = text.trim();
 
-        if (!text || text.trim() === "") {
-            return res.json({ feedback: `The AI processed your answer successfully, but returned an empty response.` });
+        let parsedData;
+        try {
+            parsedData = JSON.parse(text);
+        } catch (e) {
+            console.error("Failed to parse AI response as JSON. Raw text:", text);
+            parsedData = {
+                bandScore: "Score Unavailable",
+                meaningAccuracy: "The AI returned a response that could not be parsed. Please try submitting your answer again.",
+                lexicalResource: "Error parsing data.",
+                grammaticalRange: "Error parsing data.",
+                suggestedVersion: "Please refresh the page and try again."
+            };
         }
         
-        res.json({ feedback: text });
+        res.json(parsedData);
 
     } catch (error) {
         console.error("Backend Error:", error);
-        res.status(200).json({ feedback: `<span style="color: red; font-weight: bold;">BACKEND CRASH REPORT: ${error.message}</span>` });
+        res.status(200).json({ 
+            bandScore: "Backend Error",
+            meaningAccuracy: `System Error: ${error.message}`,
+            lexicalResource: "Please check your server connection.",
+            grammaticalRange: "Please check your server connection.",
+            suggestedVersion: "Ensure your Render service is running smoothly."
+        });
     }
 });
 
